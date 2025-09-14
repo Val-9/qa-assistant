@@ -1,0 +1,13 @@
+{
+  "name": "ui-tests",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "test": "playwright test --reporter=html",
+    "test:headed": "PWDEBUG=1 playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.46.0",
+    "typescript": "^5.4.0"
+  }
+}

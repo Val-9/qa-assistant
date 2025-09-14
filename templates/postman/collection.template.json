@@ -1,0 +1,79 @@
+{
+  "info": {
+    "name": "Auth - Sweepnow (Stage)",
+    "_postman_id": "7c1a7b42-1c9e-4a40-9c0a-auth-stage",
+    "description": "Login API with validations and basic assertions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "POST /api/app/auth/login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/app/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "app",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clientIp\": \"{{clientIp}}\",\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "description": "Login with username+password"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 or 422', function(){ pm.expect([200,422]).to.include(pm.response.code); });",
+              "if (pm.response.code === 200) {",
+              "  const json = pm.response.json();",
+              "  pm.test('Response has success boolean', function(){ pm.expect(json).to.have.property('success'); });",
+              "  if (json.success === true) { pm.collectionVariables.set('authToken', json.token || ''); }",
+              "  else { pm.test('Error present', function(){ pm.expect(json).to.have.property('error'); }); }",
+              "}",
+              "if (pm.response.code === 422) { const j = pm.response.json(); pm.test('422 contains detail', function(){ pm.expect(j).to.have.property('detail'); }); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://staging.sweepnow.io"
+    },
+    {
+      "key": "clientIp",
+      "value": "203.0.113.10"
+    },
+    {
+      "key": "username",
+      "value": "testuser_4789"
+    },
+    {
+      "key": "password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    }
+  ]
+}

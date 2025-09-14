@@ -1,0 +1,38 @@
+feature: "User Authentication"
+version: "1.0.0"
+owner: "Auth Team"
+environments:
+  - name: "stage"
+    base_url: "https://staging.sweepnow.io"
+    variables:
+      - key: "clientIp"
+        value: "203.0.113.10"
+endpoints:
+  - method: "POST"
+    path: "/api/app/auth/login"
+    name: "Login"
+    auth_required: false
+    examples:
+      request:
+        clientIp: "203.0.113.10"
+        username: "testuser_4789"
+        password: "Test1234!"
+      response:
+        success: true
+        token: "jwt_example"
+ui:
+  pages:
+    - name: "AuthModal"
+      url: "/"
+      locators:
+        - { name: "registrationTab", by: "role", value: "tab:Registration" }
+        - { name: "loginTab",        by: "role", value: "tab:Login" }
+        - { name: "username",        by: "css",  value: "input[name='username']" }
+        - { name: "password",        by: "css",  value: "input[name='password']" }
+        - { name: "confirmPassword", by: "css",  value: "input[name='confirmPassword']" }
+        - { name: "nextBtn",         by: "role", value: "button:Next" }
+        - { name: "joinBtn",         by: "role", value: "button:Join Us" }
+        - { name: "submitLogin",     by: "role", value: "button:Login" }
+        - { name: "forgotPassword",  by: "role", value: "link:Forgot Password?" }
+        - { name: "googleBtn",       by: "role", value: "button:Google" }
+        - { name: "facebookBtn",     by: "role", value: "button:Facebook" }
