@@ -25,6 +25,7 @@ ui:
     - name: "AuthModal"
       url: "/"
       locators:
+      
         - { name: "registrationTab", by: "role", value: "tab:Registration" }
         - { name: "loginTab",        by: "role", value: "tab:Login" }
         - { name: "username",        by: "css",  value: "input[name='username']" }
