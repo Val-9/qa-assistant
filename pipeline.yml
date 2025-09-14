@@ -1,0 +1,109 @@
+name: QA Assistant Pipeline
+
+on:
+  push:
+    paths:
+      - 'requirements/**'
+      - 'generators/**'
+      - 'templates/**'
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install generator deps
+        run: |
+          python -m pip install -U pip
+          pip install -r generators/requirements.txt || true
+      - name: Generate artefacts from QA-DSL
+        run: |
+          python generators/cli.py generate --input requirements/auth.yaml --out .
+      - name: Upload generated artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated
+          path: |
+            postman/collection.json
+            postman/env.stage.json
+            ui-tests/**
+
+  run-postman:
+    needs: generate
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ secrets.STAGE_BASE_URL }}
+      CLIENT_IP: ${{ secrets.STAGE_CLIENT_IP }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: generated, path: . }
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Newman
+        run: npm i -g newman newman-reporter-htmlextra
+      - name: Inject runtime vars
+        run: |
+          jq '. + { variable: [
+              {"key":"baseUrl","value": env.BASE_URL},
+              {"key":"clientIp","value": env.CLIENT_IP}
+            ] }' postman/collection.json > postman/collection.run.json
+      - name: Run Newman
+        run: |
+          newman run postman/collection.run.json -e postman/env.stage.json \
+            -r cli,htmlextra --reporter-htmlextra-export postman/report.html
+      - name: Upload Postman report
+        uses: actions/upload-artifact@v4
+        with: { name: postman-report, path: postman/report.html }
+
+  run-playwright:
+    needs: generate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: generated, path: . }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Playwright deps
+        run: |
+          cd ui-tests
+          npm ci
+          npx playwright install --with-deps
+      - name: Run UI tests
+        run: |
+          cd ui-tests
+          npx playwright test --reporter=html --timeout=60000
+      - name: Upload UI report
+        uses: actions/upload-artifact@v4
+        with: { name: ui-report, path: ui-tests/playwright-report }
+
+  defects:
+    needs: [run-postman, run-playwright]
+    runs-on: ubuntu-latest
+    if: failure()
+    env:
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+      JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: postman-report, path: artifacts/postman }
+      - uses: actions/download-artifact@v4
+        with: { name: ui-report, path: artifacts/ui }
+      - name: Create Jira issue for failures
+        run: |
+          SUMMARY="[Auto][Auth] Failures in pipeline $(date -u +%FT%TZ)"
+          DESC="See attached reports (uploaded as artifacts)."
+          curl -s -X POST \
+            -H "Authorization: Basic $(echo -n $JIRA_EMAIL:$JIRA_TOKEN | base64)" \
+            -H "Content-Type: application/json" \
+            "$JIRA_BASE_URL/rest/api/3/issue" \
+            -d '{"fields":{"project":{"key":"'"$JIRA_PROJECT_KEY"'"},"issuetype":{"name":"Bug"},"summary":"'"$SUMMARY"'","description":"'"$DESC"'"}}'
