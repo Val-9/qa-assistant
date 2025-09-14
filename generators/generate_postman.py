@@ -6,6 +6,7 @@ def generate_postman(dsl: dict, out_dir: Path):
     with open(tmpl_path, "r", encoding="utf-8") as f:
         collection = json.load(f)
 
+    
     try:
         envs = dsl.get("environments", [])
         stage = next((e for e in envs if e.get("name") == "stage"), None)
